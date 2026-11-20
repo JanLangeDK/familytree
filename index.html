@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jans stamtræ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: one narrow reading column; a half-circle anetavle on top, then the same people as lists by generation. */
+:root{
+  --bg:#f2f4f1; --surface:#ffffff; --ink:#1b2924; --muted:#5f6d67; --line:#d5dcd7;
+  --doc:#2c6a4d; --arch:#3f7fa6; --tree:#b98a2f; --unk:#c9d0cc; --accent:#2c6a4d;
+  --on-fill:#ffffff;
+  --display:"Fraunces", Georgia, "Times New Roman", serif;
+  --body:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#131a17; --surface:#1b2420; --ink:#e7ece9; --muted:#9aa8a1; --line:#2e3a35;
+    --doc:#58b088; --arch:#6fb0d6; --tree:#d9ad55; --unk:#36423d; --accent:#58b088;
+    --on-fill:#0f1613;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#131a17; --surface:#1b2420; --ink:#e7ece9; --muted:#9aa8a1; --line:#2e3a35;
+  --doc:#58b088; --arch:#6fb0d6; --tree:#d9ad55; --unk:#36423d; --accent:#58b088;
+  --on-fill:#0f1613;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
+main{max-width:720px;margin:0 auto;padding:24px 16px 56px;display:flex;flex-direction:column;gap:36px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:2rem;font-weight:650}
+h2{font-size:1.4rem;font-weight:650}
+h3{font-size:1.05rem;font-weight:500}
+p{margin:0}
+a{color:var(--accent)}
+a:focus-visible,button:focus-visible,path:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.lede{color:var(--muted);max-width:62ch}
+header{display:flex;flex-direction:column;gap:10px}
+section{display:flex;flex-direction:column;gap:14px}
+.tally{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.tally div{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 6px;text-align:center}
+.tally b{display:block;font-family:var(--display);font-size:1.25rem;font-variant-numeric:tabular-nums}
+.tally span{font-size:.72rem;color:var(--muted)}
+.fan{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.fan svg{width:100%;height:auto;display:block}
+.fan path{stroke:var(--surface);stroke-width:1.2;cursor:pointer}
+.fan path.sel{stroke:var(--ink);stroke-width:2}
+.fan text{font-family:var(--body);font-size:8.5px;fill:var(--on-fill);pointer-events:none;text-anchor:middle;dominant-baseline:middle;font-weight:500}
+.f-doc{fill:var(--doc)} .f-arch{fill:var(--arch)} .f-tree{fill:var(--tree)} .f-unk{fill:var(--unk)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.8rem;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.readout{border-top:1px solid var(--line);padding-top:10px;min-height:120px;display:flex;flex-direction:column;gap:2px}
+.readout .rel{font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.readout .nm{font-family:var(--display);font-size:1.15rem}
+.readout .facts{font-size:.9rem;color:var(--muted)}
+.readout .btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.readout button{font:inherit;font-size:.88rem;font-weight:500;color:var(--on-fill);background:var(--accent);border:0;border-radius:6px;padding:8px 12px;cursor:pointer}
+.readout button#zoomout{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+.gen{display:flex;flex-direction:column;gap:8px}
+.gen h3{display:flex;justify-content:space-between;align-items:baseline;gap:12px;border-bottom:1px solid var(--line);padding-bottom:4px}
+.gen h3 small{font-family:var(--body);font-size:.78rem;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.card{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--unk);border-radius:6px;padding:10px 12px;display:grid;grid-template-columns:2.2em 1fr;gap:2px 8px}
+.card.doc{border-left-color:var(--doc)} .card.arch{border-left-color:var(--arch)} .card.tree{border-left-color:var(--tree)}
+.card .k{font-variant-numeric:tabular-nums;color:var(--muted);font-size:.85rem;padding-top:2px}
+.card .nm{font-weight:600}
+.card .rel{font-size:.78rem;color:var(--muted)}
+.card .facts{grid-column:2;font-size:.9rem}
+.card .note{grid-column:2;font-size:.82rem;color:var(--muted)}
+.card.unk{border-style:dashed;border-left-style:solid;color:var(--muted)}
+.chip{display:inline-block;font-size:.7rem;border:1px solid var(--line);border-radius:999px;padding:0 7px;margin-left:6px;color:var(--muted);white-space:nowrap}
+.story{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.story p{max-width:65ch;font-size:.95rem}
+ul.desc,ul.desc ul{list-style:none;margin:0;padding:0}
+ul.desc ul{margin-left:10px;padding-left:12px;border-left:2px solid var(--line)}
+ul.desc li{padding:3px 0}
+ul.desc .yr{color:var(--muted);font-variant-numeric:tabular-nums;font-size:.88rem}
+ul.desc .me{font-weight:600;color:var(--accent)}
+ul.plain{margin:0;padding-left:1.1em;display:flex;flex-direction:column;gap:6px;max-width:65ch}
+ul.plain li{font-size:.95rem}
+.src li{font-size:.88rem}
+footer{font-size:.8rem;color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>Jans stamtræ</h1>
+  <p class="lede">Aner op til otte generationer tilbage fra Jan (f. 1969), bygget på familiens 21 attester og papirer og suppleret med kirkebøger, folketællinger og andre slægtsforskeres træer. Farven viser, hvor sikker hver oplysning er.</p>
+  <div class="tally" id="tally"></div>
+</header>
+
+<section aria-labelledby="h-fan">
+  <h2 id="h-fan">Anetavle</h2>
+  <div class="fan">
+    <svg id="fan" viewBox="0 0 400 222" role="group" aria-label="Halvcirkel med Jans aner. Fars side til venstre, mors side til højre."></svg>
+    <div class="legend">
+      <span><i style="background:var(--doc)"></i>Familiens attester</span>
+      <span><i style="background:var(--arch)"></i>Kirkebog eller folketælling</span>
+      <span><i style="background:var(--tree)"></i>Andres slægtstræ, ikke efterprøvet</span>
+      <span><i style="background:var(--unk)"></i>Ikke fundet</span>
+    </div>
+    <div class="readout" id="readout" aria-live="polite"></div>
+  </div>
+  <p class="lede"><span id="fancap"></span> Tryk på et felt for at se personen, og brug knappen under navnet til at forstørre en enkelt gren.</p>
+</section>
+
+<section aria-labelledby="h-story">
+  <h2 id="h-story">Det fortæller kilderne</h2>
+  <div class="story">
+    <h3>Lange kom fra Østpreussen, Brzozowska fra Posen</h3>
+    <p>Max Leopold Lange blev født 16. november 1862 i Skurpien i Kreis Neidenburg i Østpreussen (i dag Skurpie i Polen) som søn af lærer Johann Lange og Anna, født Elff. Pelagia Brzozowska blev født 23. december 1868 i Wronke i Posen (i dag Wronki) som datter af skomager Thomas Brzozowski og Sophie, født Nowacka, og hun var katolik. De blev gift i Sønderborg kirke 9. august 1896, og Willy blev født fem måneder senere.</p>
+    <p>Pelagias slægt kan følges tre led længere tilbage i Wronki. Hendes far var gift tre gange; Sophie var hans anden kone og søster til den første. Sophies forældre Antonius Nowacki og Agatha Spinalska blev gift i Wronki i 1826, og Thomas' forældre Michael Brzozowski og Catharina Szartowicz i 1824. Begge vielser nævner brudeparrets forældre, født omkring 1760–1775.</p>
+  </div>
+  <div class="story">
+    <h3>Lauritzen i Sønderborg i fire led</h3>
+    <p>Oline voksede op i Havbogade 20 i Sønderborg som en af mindst tolv søskende. Hendes far Max Degen Lauritzen var født i Dynt i Broager sogn, og hans farfar Mads kom fra Årre sogn ved Ribe og døde i Sønderborg i 1911, få uger efter at Oline blev født. Mads blev døbt Mads Degn Lauridsen som søn af Laurids Mortensen Degn og Ester Marie Madsdatter, og det er derfra mellemnavnet Degen kommer. Olines mor, Oline Marie Petersen, blev døbt i Sønderborg 2. juli 1882 som datter af Johann Heinrich Wilhelm Petersen og Maria Catharina, født Knudsen.</p>
+  </div>
+  <div class="story">
+    <h3>Smeden i Ans</h3>
+    <p>Svend Aage blev født i Struer som søn af en lokomotivfyrbøder, blev udlært smed og arbejdede nogle år som ekstra fyrbøder ved DSB og på centralværkstederne i Aarhus. Den 20. april 1947 købte han smedeforretningen i Ans, som han drev til 1975, hvor sønnen Jørgen tog over. Han og Anna døde med tre måneders mellemrum på Søvangen i Ans, hun 12. december 2000 og han 10. marts 2001.</p>
+  </div>
+  <div class="story">
+    <h3>Kristiansen og Mønsted: hvor mellemnavnet Møller kommer fra</h3>
+    <p>Antons far Kristen blev født 1. maj 1856 på Kjølsengaarde i Vorde sogn som søn af gårdmand Christian Olesen og Johanne Cathrine Sørensdatter. Antons mor Madsine blev født 29. december 1858 i Fiskbæk som datter af indsidder Jacob Peter Møller Mønsted og Ane Kathrine Nielsen. De blev gift 1. juni 1886 i Fiskbæk kirke, fordi Romlund kirke var under reparation. Mellemnavnet Møller, som går igen hos Anton, Svend Aage, Jette og Erik, stammer altså fra Madsines far.</p>
+  </div>
+  <div class="story">
+    <h3>Lundsgaard: gårdfolk i Vorde sogn siden 1600-tallet</h3>
+    <p>Annas far Carl var søn af Søren Villumsen på Vordegaard, og den linje kan følges til Willum Christensen, født samme sted i 1791. Den ældste, Boile Nielsen, er født i Vorde i 1694. Carls morfar Philip Frederik Jacobsen Winkler var født i Havredal i Frederiks sogn og var barnebarn af kartoffeltyskere: ifølge GEDCOM-projektet var hans farfar Sebastian Winkler født 1738 i Oberösterreich og hans farmor Anna Cathrine Meng født 1737 i Oberstein i Rhinlandet.</p>
+  </div>
+</section>
+
+<section aria-labelledby="h-list">
+  <h2 id="h-list">Anerne generation for generation</h2>
+  <p class="lede">Tallet foran hvert navn er anenummeret: faderen til nummer n er 2n, moderen er 2n + 1.</p>
+  <div id="gens" style="display:flex;flex-direction:column;gap:22px"></div>
+</section>
+
+<section aria-labelledby="h-desc">
+  <h2 id="h-desc">Efterkommere af Willy og Oline</h2>
+  <p class="lede">Aflæst fra familiens stamtræsbillede. Ægtefæller står efter ⚭.</p>
+  <ul class="desc">
+    <li>Sonja <span class="yr">1935</span> ⚭ Gerhard <span class="yr">1934</span>
+      <ul>
+        <li>Per <span class="yr">1955</span> ⚭ Helen <span class="yr">1954</span>
+          <ul>
+            <li>Jesper <span class="yr">1982</span> ⚭ Line <span class="yr">1982</span>
+              <ul><li>Sofie <span class="yr">2013</span></li></ul></li>
+            <li>Jane <span class="yr">1985</span> ⚭ Casper <span class="yr">1979</span></li>
+          </ul></li>
+        <li>Ole <span class="yr">1961</span></li>
+      </ul></li>
+    <li>Ruth <span class="yr">1937</span> ⚭ Verner <span class="yr">1935</span>
+      <ul>
+        <li>Vivi <span class="yr">1957</span> ⚭ Pelle <span class="yr">1952</span>
+          <ul>
+            <li>Camilla <span class="yr">1986</span> ⚭ Lars <span class="yr">1975</span>
+              <ul><li>Linnea <span class="yr">2008</span></li></ul></li>
+            <li>Sara <span class="yr">1988</span></li>
+          </ul></li>
+        <li>Jonny <span class="yr">1967</span> ⚭ Anna <span class="yr">1957</span></li>
+      </ul></li>
+    <li>Verner <span class="yr">1942</span> ⚭ Jette <span class="yr">1945</span>
+      <ul>
+        <li><span class="me">Jan</span> <span class="yr">1969</span> ⚭ Rikke <span class="yr">1972</span>
+          <ul><li>Daniel <span class="yr">1994</span></li><li>Simon <span class="yr">1996</span></li><li>Alex <span class="yr">2001</span></li></ul></li>
+        <li>Jens <span class="yr">1972</span> ⚭ Anette <span class="yr">1972</span>
+          <ul><li>Maria <span class="yr">2001</span></li><li>Oliver <span class="yr">2003</span></li></ul></li>
+        <li>Tina <span class="yr">1978</span> ⚭ Torben <span class="yr">1976</span>
+          <ul><li>Line <span class="yr">2003</span></li><li>Lærke <span class="yr">2007</span></li><li>Lasse <span class="yr">2010</span></li></ul></li>
+      </ul></li>
+  </ul>
+</section>
+
+<section aria-labelledby="h-side">
+  <h2 id="h-side">Sidegrene</h2>
+  <div class="story">
+    <h3>Jettes brødre</h3>
+    <p>Jørgen Kristiansen, som overtog smedeforretningen i Ans i 1975. Erik Møller Kristiansen, født 20. december 1949 i Ans, maskintekniker, død 12. juli 1986 i Ans.</p>
+  </div>
+  <div class="story">
+    <h3>Antons søskende</h3>
+    <p>Folketællingen 1901 for Romlund har fem børn hjemme hos Kristen og Madsine: Peder Kristian (6. februar 1889), Johanne Katrine (16. juni 1891), Anton Møller (15. november 1893), Ane Katrine (19. december 1896) og Elise Kristine (26. februar 1900).</p>
+  </div>
+  <div class="story">
+    <h3>Kristen Kristiansens bror</h3>
+    <p>Ole Christiansen, gårdmand i Kjølsengaarde, var forlover ved brylluppet i 1886 og er efter navn og gård at dømme Kristens bror. Ved Madsines dåb blev hun båret af skolelærer M. Mønsteds kone fra Kvols, som sandsynligvis er i familie med faderen.</p>
+  </div>
+  <div class="story">
+    <h3>Annas søskende</h3>
+    <p>Aage Sørensen Lundsgaard og Birgitte Elisabeth Sørensen Lundsgaard, født 6. juli 1927 i Kølsen. Der kan være flere; folketællingen 1925 for Vorde sogn viser hele husstanden.</p>
+  </div>
+  <div class="story">
+    <h3>Olines søskende</h3>
+    <p>Max August (1900), Karl (1903), Heinrich Wilhelm (1904), Christian (1906), Friedrich Wilhelm (1907), Albert Friedrich (1909, død som spæd), Meta (1913), Dora Katharina (1915), Cathrine Margaretha (1918), Markus Degen (1920) og en yngre søster. De ældste er født i Flensborg ifølge folketællingen 1921, så familien boede der nogle år først i 1900-tallet.</p>
+  </div>
+  <div class="story">
+    <h3>Max Degen Lauritzens søskende</h3>
+    <p>Carl August (1880), Christian Friedrich (1882), Marie Susanne (1884, død som spæd) og Friedrich Lauritz (1885), alle født i Sønderborg.</p>
+  </div>
+</section>
+
+<section aria-labelledby="h-open">
+  <h2 id="h-open">Det mangler stadig</h2>
+  <ul class="plain">
+    <li><b>Petersen og Knudsen i Sønderborg</b> (nr. 22 og 23). Forældrene er nu fundet, men ikke deres egne fødsler. Deres vielse står sandsynligvis i Sønderborg kirkebog, viede 1856–1888, og nævner alder og forældre. Morens første fornavn og farens stilling bør læses igen i originalen.</li>
+    <li><b>Catharine Margarethe Rabens forældre</b> (nr. 42 og 43). Født 29. september 1847 i Gråsten sogn. Heller ikke hun har forældre i Ulkebøl Arkivs database; Gråsten kirkebog 1847 er næste sted.</li>
+    <li><b>Lange og Elff i Skurpien</b> (nr. 16 og 17). Stadig kun navnene fra Sønderborg kirkebog. De bevarede østpreussiske kirkebøger ligger især hos Archion, som kræver abonnement.</li>
+    <li><b>Brzozowski-grenen før 1800.</b> Poznań Projects indeks begynder i 1800, så næste led kræver de scannede Wronki-kirkebøger hos de polske statsarkiver. En anden forsker har samme familie i sit træ på welka.pl.</li>
+    <li><b>Laurids Mortensen Degn og Ester Marie Madsdatter</b> (nr. 80 og 81). Deres vielse og fødsler ligger i Årre kirkebog før 1826 og i enesteministerialbogen for Grimstrup og Årre 1785–1814.</li>
+    <li><b>Olesen, Sørensdatter, Mønsted og Nielsen</b> (nr. 48–51). Forældrene til Kristen og Madsine er nu fundet, men ikke deres fødsler og vielser. Christian Olesen og Johanne Cathrine Sørensdatter står i Vorde i folketællingen 1860 med alder og fødested, og Jacob Peter Møller Mønsteds vielse ligger sandsynligvis i Fiskbæk kirkebog midt i 1850'erne.</li>
+    <li><b>Forældre til Kristen Henriksen og Ane Mette Kirstine Jensen</b> (Langå). Jeg fandt dem ikke i de første 500 poster af folketællingen 1901 for Langå. Christines dåb 28. juli 1895 i Langå kirkebog giver forældrenes alder og bopæl.</li>
+    <li><b>Annas fødselsdag.</b> Dåbsattesten og vielsesattesten siger 27. november 1919, mens dødsanmeldelsen bygger på 26. november. Vorde kirkebog afgør det.</li>
+    <li><b>De gule felter</b> kommer fra andre slægtsforskeres træer og bør slås efter i kirkebøgerne, før de regnes for sikre. Det gælder hele sjette til ottende led.</li>
+    <li><b>Niende og tiende led</b> ligger i 1600-tallet. Kirkebøgerne i Vorde-egnen begynder først omkring 1700, så længere tilbage kræver skifter, fæsteprotokoller og jordebøger, og kun enkelte linjer kan forventes fundet.</li>
+  </ul>
+</section>
+
+<section aria-labelledby="h-src">
+  <h2 id="h-src">Kilder</h2>
+  <ul class="plain src">
+    <li>Familiens egne papirer: 21 scannede dokumenter (dåbs-, fødsels-, vielses- og dødsattester 1909–2000, to begravelsestaler, håndskrevne levnedsnoter, bedstemors håndtegnede anetavle og stamtræsbilledet).</li>
+    <li><a href="https://wiki.genealogy.net/Ev._Kirchenbuch_S%C3%B8nderborg">GenWiki: Ev. Kirchenbuch Sønderborg</a>, vielser 1896 nr. 14 (Lange og Brzozowska).</li>
+    <li><a href="https://arkivalieronline.rigsarkivet.dk/da/billedviser?epid=17217326#202598,38405059">Rigsarkivet, Arkivalier Online: Sønderborg sogn, hovedministerialbog, fødte 1869–1891</a>, opslag 343, 1882 nr. 65 (Oline Marie Petersens dåb).</li>
+    <li>Rigsarkivet, Arkivalier Online, kontraministerialbøger: <a href="https://arkivalieronline.rigsarkivet.dk/da/billedviser?epid=21584842#362533,70571566">Vorde, fødte mænd 1856 nr. 2</a>, <a href="https://arkivalieronline.rigsarkivet.dk/da/billedviser?epid=21584846#362575,70572451">Fiskbæk, fødte kvinder 1858 nr. 10</a> og <a href="https://arkivalieronline.rigsarkivet.dk/da/billedviser?epid=21584850#362625,70573244">Romlund, viede 1886 nr. 1</a>.</li>
+    <li><a href="https://poznan-project.psnc.pl/">Poznań Project</a>: Wronki katolske sogn, vielser nr. 11/1824, 8/1826, 11/1853 og 10/1864 (Brzozowski, Szartowicz, Nowacki og Spinalska).</li>
+    <li><a href="https://arkivalieronline.rigsarkivet.dk/da/billedviser?epid=21619664#388988,74190266">Rigsarkivet, Arkivalier Online: Årre sogn, fødte mænd 1826 nr. 2</a> (Mads Degn Lauridsen).</li>
+    <li><a href="https://www.alsnissen.dk/default.asp?side=2334">Alsnissen: folketælling 1921, Sønderborg bysogn</a>, Havbogade 20 (Lauritzen).</li>
+    <li><a href="https://www.ulkeboelarkiv.dk/slaegt/index.php?route=%2Fslaegt%2Ftree%2Ftree2%2Findividual%2FI33367%2FMax-Degen-Lauritzen">Ulkebøl Arkivs slægtsdatabase</a>: Max Degen Lauritzen, Karl August Lauritzen og Mads Lauritzen.</li>
+    <li><a href="http://ddd.salldata.dk/bladre/index.php?aar=1906&amp;amt=Viborg&amp;herred=&amp;sogn=Romlund&amp;kipnr=S0706&amp;start=0">Sall Data: folketælling 1906, Romlund sogn</a> og <a href="http://ddd.salldata.dk/bladre/vis.php?aar=1901&amp;kipnr=E0476&amp;start=101&amp;amt=Viborg&amp;herred=N%C3%B8rlyng&amp;sogn=Romlund&amp;aar=1901">folketælling 1901</a> (Kristiansen og Mønsted).</li>
+    <li><a href="https://gedcom.slaegt.dk/?fil=58&amp;person=3947">Danske Slægtsforskeres GEDCOM-projekt</a>: Lundsgaard-linjen fra Vorde sogn, sjette til ottende led.</li>
+    <li><a href="https://forum.slaegt.dk/index.php/topic,79148.0.html">Danske Slægtsforskeres forum</a>: tråd om Sørine Caroline Hansen med henvisninger til Vorde kirkebog og folketællingen 1925.</li>
+  </ul>
+</section>
+
+<footer>Samlet 20. november 2026. Nulevende personer er kun vist med fornavn og fødselsår.</footer>
+</main>
+
+<script>
+// s: doc = familiens attester, arch = kirkebog/folketælling, tree = andres slægtstræ
+var P = {
+ 1:{n:"Jan",f:"Født 1969",s:"doc"},
+ 2:{n:"Verner Lange",f:"Født 20. oktober 1942 i Sønderborg. Portør ved DSB. Gift 26. december 1965 i Ans kirke, Grønbæk sogn.",s:"doc"},
+ 3:{n:"Jette Møller Kristiansen",f:"Født 27. maj 1945 i Aarhus, Sct. Johannes sogn. Døbt 1. juli 1945 i Sct. Pauls Kirke. Teknisk assistent.",s:"doc"},
+ 4:{n:"Willy Horst Lange",f:"Født 11. januar 1897 i Sønderborg, død 14. oktober 1971 i Sønderborg. Arbejdsmand.",s:"doc"},
+ 5:{n:"Oline Marie Lauritzen",f:"Født 16. juli 1911 i Sønderborg, døbt 2. oktober 1911, død 18. februar 1989 på Sønderborg Sygehus. Husmor.",s:"doc"},
+ 6:{n:"Svend Aage Kristian Møller Kristiansen",f:"Født 15. juni 1920 i Struer, døbt 4. juli 1920, død 10. marts 2001 i Ans. Smedemester i Ans 1947–1975. Gift 30. april 1944 i Vorde kirke.",s:"doc"},
+ 7:{n:"Anna Sørensen Lundsgaard",f:"Født 27. november 1919 i Kølsen, Vorde sogn, døbt 25. januar 1920, død 12. december 2000 i Ans. Husassistent, senere husmor.",s:"doc",x:"Dødsanmeldelsen bygger på fødselsdatoen 26. november."},
+ 8:{n:"Max Leopold Lange",f:"Født 16. november 1862 i Skurpien, Kreis Neidenburg, Østpreussen. Konfirmeret i Lautenburg 1876. Arbejdsmand i Sønderborg. Gift 9. august 1896 i Sønderborg.",s:"doc",x:"Navnet står på Willys dødsattest; fødsel og vielse er fra Sønderborg kirkebog."},
+ 9:{n:"Pelagia Brzozowska",f:"Født 23. december 1868 i Wronke, Posen, døbt 27. december. Katolik.",s:"doc",x:"Navnet står på Willys dødsattest; fødslen er fra Sønderborg kirkebog."},
+ 10:{n:"Max Degen Lauritzen",f:"Født 26. juni 1878 i Dynt, Broager sogn, død 14. januar 1937 i Sønderborg. Arbejdsmand.",s:"doc",x:"Navnet står på Olines dåbsattest; fødsel fra folketællingen 1921, dødsdato fra Ulkebøl Arkiv."},
+ 11:{n:"Oline Marie Petersen",f:"Født 11. juni 1882 i Sønderborg, døbt 2. juli 1882.",s:"doc",x:"Navnet står på Olines dåbsattest; fødsel og dåb er læst i Sønderborg kirkebog 1882 nr. 65."},
+ 12:{n:"Anton Møller Kristiansen",f:"Født 15. november 1893 i Romlund, døbt i Romlund kirke. Lokomotivfyrbøder i Struer. Gift 26. september 1917 i Vorde kirke.",s:"doc"},
+ 13:{n:"Christine Henriksen",f:"Født 16. juni 1895 ved Langå Station, døbt 28. juli 1895 i Langå kirke. Boede i Kølsen, da hun blev gift.",s:"doc",x:"Fornavnet staves Kristine i dåbsattesterne."},
+ 14:{n:"Carl Sørensen Lundsgaard",f:"Født 10. februar 1879 på Vordegaard. Gårdejer i Kølsen.",s:"doc",x:"Navn og stilling fra Annas dåbsattest; fødslen er fra GEDCOM-projektet."},
+ 15:{n:"Sørine Caroline Hansen",f:"Født 12. juli 1886 i Kølsen.",s:"doc",x:"Navnet er læst fra håndskrift på Annas dåbsattest; fødslen er fra GEDCOM-projektet."},
+ 16:{n:"Johann Lange",f:"Lærer i Skurpien, Østpreussen.",s:"arch"},
+ 17:{n:"Anna Elff",f:"Gift med lærer Johann Lange.",s:"arch"},
+ 18:{n:"Thomas Brzozowski",f:"Født 10. december 1827 i Wronki (Wronke), Posen. Skomager. Gift tre gange i Wronki: 1853, 1864 og 1871.",s:"arch",x:"Vielserne står i Poznań Projects indeks over Wronki katolske sogn; fødselsdatoen er en anden forskers oplysning samme sted."},
+ 19:{n:"Sophie Nowacka",f:"Født 9. maj 1835 i Wronki. Gift 1864 i Wronki med Thomas Brzozowski, som var enkemand efter hendes søster Marianna. Død før 1871.",s:"arch",x:"Vielsen er nr. 10/1864 i Wronki katolske sogn; fødselsdatoen er en anden forskers oplysning i Poznań Project."},
+ 36:{n:"Michael Brzozowski",f:"31 år ved vielsen i Wronki 1824, altså født omkring 1793.",s:"arch",x:"Wronki katolske sogn, vielse nr. 11/1824."},
+ 37:{n:"Catharina Szartowicz",f:"24 år ved vielsen i 1824, altså født omkring 1800.",s:"arch",x:"Efternavnet skrives også Rasłowicz og Szarłowicz i indekset."},
+ 38:{n:"Antonius Nowacki",f:"31 år ved vielsen 19. juli 1826 i Wronki, altså født omkring 1795.",s:"arch",x:"Wronki katolske sogn, vielse nr. 8/1826."},
+ 39:{n:"Agatha Spinalska",f:"24 år ved vielsen i 1826, altså født omkring 1802.",s:"arch"},
+ 72:{n:"Joseph Brzozowski",f:"Far til Michael Brzozowski i Wronki.",s:"arch"},
+ 73:{n:"Elisabeth",f:"Gift med Joseph Brzozowski. Pigenavnet står ikke i indekset.",s:"arch"},
+ 74:{n:"Adalbertus Szartowicz",f:"Far til Catharina Szartowicz i Wronki.",s:"arch"},
+ 75:{n:"Petronella Barbanska",f:"Gift med Adalbertus Szartowicz.",s:"arch"},
+ 76:{n:"Joannes Nowacki",f:"Far til Antonius Nowacki i Wronki.",s:"arch"},
+ 77:{n:"Regina Radwańska",f:"Gift med Joannes Nowacki.",s:"arch"},
+ 78:{n:"Petrus Spinalski",f:"Far til Agatha Spinalska i Wronki.",s:"arch"},
+ 79:{n:"Hedvigis Kokocka",f:"Gift med Petrus Spinalski. Efternavnet skrives også Kokoska og Kokowska.",s:"arch"},
+ 80:{n:"Laurids Mortensen Degn",f:"Boede i Årre sogn ved Ribe i 1826, sandsynligvis som indsidder.",s:"arch",x:"Læst i Årre kirkebog, fødte mænd 1826 nr. 2. Stilling og stednavn er svære at tyde."},
+ 81:{n:"Ester Marie Madsdatter",f:"Gift med Laurids Mortensen Degn.",s:"arch",x:"Læst i Årre kirkebog, fødte mænd 1826 nr. 2. Sønnen Mads kaldte selv en datter Ester Marie."},
+ 20:{n:"Karl August Lauritzen",f:"Født 3. september 1852 i Sønderborg, død 28. februar 1930 i Slesvig.",s:"tree"},
+ 21:{n:"Catharine Margarethe Raben",f:"Født 29. september 1847 i Gråsten sogn, død 22. juni 1924 i Sønderborg.",s:"tree"},
+ 24:{n:"Kristen Kristiansen",f:"Født 1. maj 1856 på Kjølsengaarde, Vorde sogn. Gartner, senere husmand og landbruger i Romlund. Gift 1. juni 1886 i Fiskbæk kirke.",s:"doc",x:"Navnet står på Antons dåbsattest; fødsel og vielse er læst i Vorde og Romlund kirkebøger. Han blev først indført som Christen Christensen og rettet til Christiansen."},
+ 25:{n:"Madsine Kirstine Mønsted",f:"Født 29. december 1858 i Fiskbæk, døbt 9. januar 1859 i Fiskbæk kirke. Boede i Romlund, da hun blev gift.",s:"doc",x:"Kirkebøgerne og folketællingen 1901 skriver Madsine; Antons dåbsattest ser ud til at have Madine."},
+ 48:{n:"Christian Olesen",f:"Gårdmand på Kjølsengaarde, Vorde sogn, i 1856.",s:"arch",x:"Læst i Vorde kirkebog, fødte mænd 1856 nr. 2."},
+ 49:{n:"Johanne Cathrine Sørensdatter",f:"Alderen ser ud til at være 40 år ved sønnens fødsel i 1856, altså født omkring 1816.",s:"arch",x:"Læst i Vorde kirkebog, fødte mænd 1856 nr. 2."},
+ 50:{n:"Jacob Peter Møller Mønsted",f:"Indsidder i Fiskbæk i 1858.",s:"arch",x:"Læst i Fiskbæk kirkebog, fødte kvinder 1858 nr. 10."},
+ 51:{n:"Ane Kathrine Nielsen",f:"27 år ved datterens fødsel i 1858, altså født omkring 1831. Boede i Fiskbæk.",s:"arch",x:"Læst i Fiskbæk kirkebog, fødte kvinder 1858 nr. 10."},
+ 26:{n:"Kristen Henriksen",f:"Arbejdsmand ved Langå.",s:"doc"},
+ 27:{n:"Ane Mette Kirstine Jensen",f:"Gift med Kristen Henriksen i Langå.",s:"doc"},
+ 28:{n:"Søren Villumsen",f:"Født 2. februar 1829 på Vordegaard.",s:"tree"},
+ 29:{n:"Birgitte Frederiksdatter",f:"Født 5. april 1850 i Vium.",s:"tree"},
+ 30:{n:"Søren Hansen",f:"Født 24. marts 1831 i Vorde.",s:"tree"},
+ 31:{n:"Karen Olesen",f:"Født 3. august 1849 i Vorde.",s:"tree"},
+ 40:{n:"Mads Degn Lauritzen",f:"Født 28. januar 1826 i Årre sogn ved Ribe, død 25. august 1911 i Sønderborg.",s:"arch",x:"Fødslen er læst i Årre kirkebog, hvor han hedder Mads Degn Lauridsen; dødsdatoen er fra Ulkebøl Arkiv."},
+ 41:{n:"Marie Susanne Christensen",f:"Født omkring 1820 i Ribe, død 26. april 1864 i Sønderborg.",s:"tree"},
+ 56:{n:"Willum Christensen",f:"Født 14. september 1791 på Vordegaard, død 15. december 1864 samme sted.",s:"tree"},
+ 57:{n:"Birthe Marie Sørensdatter",f:"Født 1792 i Vorde.",s:"tree"},
+ 58:{n:"Philip Frederik Jacobsen Winkler",f:"Født 31. marts 1811 i Havredal, Frederiks sogn, død 7. januar 1875 i Vium.",s:"tree"},
+ 59:{n:"Ane Sørensdatter",f:"Født 13. maj 1815 i Vium sogn.",s:"tree"},
+ 60:{n:"Hans Christensen",f:"Født 1806, hjemmedøbt i Kølsen.",s:"tree"},
+ 61:{n:"Maren Sørensdatter",f:"Født 1805.",s:"tree"},
+ 62:{n:"Ole Christensen",f:"Født 3. februar 1818 i Rogenstrup, død 5. november 1888 i Vorde.",s:"tree"},
+ 63:{n:"Ane Mogensdatter",f:"Født 6. oktober 1820 i Vorde, død 16. marts 1887 i Vorde.",s:"tree"},
+ 22:{n:"Johann Heinrich Wilhelm Petersen",f:"Boede i Sønderborg i 1882. Fadder ved sin datters dåb.",s:"arch",x:"Læst i Sønderborg kirkebog, fødte 1882 nr. 65. Hans stilling er svær at tyde."},
+ 23:{n:"Maria Catharina Knudsen",f:"Gift med Johann Heinrich Wilhelm Petersen. Første fornavn ligner Wiebke.",s:"arch",x:"Læst i Sønderborg kirkebog, fødte 1882 nr. 65. En Oline Knudsen, ugift i Sønderborg, var fadder."},
+ 112:{n:"Christen Nielsen",f:"Født 1760 i Vorde.",s:"tree"},
+ 113:{n:"Kirsten Jensdatter",f:"Født 1757 på Lundsgård, Vorde.",s:"tree"},
+ 114:{n:"Søren Nielsen Stidsen",f:"Født 1762 på Lundsgård, Kølsen.",s:"tree"},
+ 115:{n:"Anne Marie Clausdatter",f:"Født 1764.",s:"tree"},
+ 116:{n:"Johan Jacob Winkler",f:"Født juni 1774 i Frederiks sogn.",s:"tree"},
+ 117:{n:"Maria Catharina Breuner",f:"Født 1777 i Trehuse, Frederiks sogn. Kilden skriver Brauerin.",s:"tree"},
+ 118:{n:"Søren Madsen",f:"Født 1. august 1783 i Vium.",s:"tree"},
+ 119:{n:"Ane Marie Pedersdatter",f:"Født 11. december 1787 i Vium.",s:"tree"},
+ 120:{n:"Christen Madsen",f:"Født 1761 på Kølsen Mølle, Vorde sogn.",s:"tree"},
+ 121:{n:"Karen Hansdatter",f:"Født 1774.",s:"tree"},
+ 122:{n:"Søren Nielsen",f:"Født 1761.",s:"tree"},
+ 124:{n:"Christen Madsen",f:"Født 23. oktober 1787 i Rogenstrup.",s:"tree"},
+ 125:{n:"Mette Marie Friderichsdatter",f:"Født 24. juni 1781 i Fiskbæk.",s:"tree"},
+ 126:{n:"Mogens Jørgensen",f:"Født 1783 i Skals.",s:"tree"},
+ 127:{n:"Karen Chrestensdatter",f:"Født 1777 i Kvols.",s:"tree"},
+ 224:{n:"Niels Christensen",f:"Født 1735 i Vorde.",s:"tree"},
+ 226:{n:"Jens Hansen",f:"Født 1723 i Vorde.",s:"tree"},
+ 227:{n:"Anne Boilesdatter",f:"Født september 1729 på Lundsgård.",s:"tree"},
+ 228:{n:"Niels Sørensen",f:"Kilden angiver fødselsår 1742.",s:"tree",x:"Årstallet passer dårligt med sønnens fødsel i 1762 og bør efterprøves."},
+ 229:{n:"Birthe Nielsdatter",f:"Født 1720.",s:"tree"},
+ 232:{n:"Sebastian Winkler",f:"Født 1738 i Oberösterreich.",s:"tree"},
+ 233:{n:"Anna Cathrine Meng",f:"Født 24. maj 1737 i Oberstein, Rhinlandet.",s:"tree"},
+ 234:{n:"Jacob Breuner",f:"Født 1752.",s:"tree"},
+ 235:{n:"Cathrine Dürring",f:"Født 1755.",s:"tree"},
+ 236:{n:"Mads Christensen",f:"Født 1756.",s:"tree"},
+ 237:{n:"Birgitte Marie Christensdatter",f:"Gift med Mads Christensen i Vium.",s:"tree"},
+ 238:{n:"Peder Christensen Krogsgård",f:"Født 1741 i Vium.",s:"tree"},
+ 239:{n:"Birgitte Nielsdatter",f:"Født 1753.",s:"tree"},
+ 240:{n:"Mads Christensen",f:"Født 1720. Far til Christen Madsen på Kølsen Mølle.",s:"tree"},
+ 241:{n:"Anne Kjeldsdatter",f:"Født 1721.",s:"tree"},
+ 248:{n:"Mads Christensen",f:"Født 30. november 1749 i Fiskbæk.",s:"tree"},
+ 249:{n:"Anne Johansdatter",f:"Født 1747.",s:"tree"},
+ 250:{n:"Friderich Jacobsen",f:"Født 1724 i Løgstrup.",s:"tree"},
+ 251:{n:"Maren Pedersdatter",f:"Gift med Friderich Jacobsen i Løgstrup.",s:"tree"},
+ 252:{n:"Jørgen Pedersen",f:"Født 1725.",s:"tree"},
+ 253:{n:"Anna Mogensdatter",f:"Født 22. januar 1747 i Skals.",s:"tree"},
+ 255:{n:"Else Laursdatter",f:"Født 1751.",s:"tree"},
+ 448:{n:"Christen Pedersen",f:"Født 1696 i Vorde.",s:"tree"},
+ 449:{n:"Anne Lauridsdatter",f:"Født 1701.",s:"tree"},
+ 452:{n:"Hans Larsen",f:"Far til Jens Hansen i Vorde.",s:"tree"},
+ 454:{n:"Boile Nielsen",f:"Født 1694 i Vorde.",s:"tree"},
+ 455:{n:"Kirsten Sørensdatter",f:"Født 1700 i Kistrup.",s:"tree"},
+ 472:{n:"Christen Sørensen",f:"Født 1725 i Vium.",s:"tree"},
+ 476:{n:"Christen Jacobsen Krogsgård",f:"Far til Peder Christensen Krogsgård i Vium.",s:"tree"},
+ 477:{n:"Maren Pedersdatter",f:"Gift med Christen Jacobsen Krogsgård.",s:"tree"},
+ 500:{n:"Jacob Friderichsen",f:"Far til Friderich Jacobsen i Løgstrup.",s:"tree"}
+};
+var SRC = {doc:"Familiens attester", arch:"Kirkebog", tree:"Andres slægtstræ"};
+var GEN = ["", "Forældre", "Bedsteforældre", "Oldeforældre", "Tipoldeforældre", "Tip-tipoldeforældre", "6. led (3 × tipoldeforældre)", "7. led (4 × tipoldeforældre)", "8. led (5 × tipoldeforældre)"];
+var SHORT = {2:"Verner",3:"Jette",4:"Lange",5:"Lauritzen",6:"Kristiansen",7:"Lundsgaard"};
+
+function rel(n){
+  if(n===1) return "dig";
+  var bits = n.toString(2).slice(1).split("").map(function(b){return b==="0"?"far":"mor";});
+  var groups=[]; for(var i=0;i<bits.length;i+=2) groups.push(bits.slice(i,i+2).join(""));
+  return groups.join("s ");
+}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+
+// Tally
+(function(){
+  var h="";
+  for(var g=1;g<=8;g++){
+    var tot=Math.pow(2,g), k=0;
+    for(var n=tot;n<2*tot;n++) if(P[n]) k++;
+    h+='<div><b>'+k+'/'+tot+'</b><span>'+g+'. led</span></div>';
+  }
+  document.getElementById("tally").innerHTML=h;
+})();
+
+// Fan chart: rooted at any person, rings out to the 8th generation from Jan
+var CX=200, CY=214, R0=22, RMAX=197, root=1, sel=1;
+function gen(n){return Math.floor(Math.log2(n));}
+function pt(r,a){return (CX+r*Math.cos(a)).toFixed(2)+","+(CY-r*Math.sin(a)).toFixed(2);}
+function hasAnc(n){ for(var k in P){ var m=+k; while(m>n) m=Math.floor(m/2); if(m===n && +k!==n) return true; } return false; }
+function draw(){
+  var svg=document.getElementById("fan"), h="", rings=8-gen(root), w=(RMAX-R0)/rings;
+  for(var g=1;g<=rings;g++){
+    var tot=Math.pow(2,g), step=Math.PI/tot, r0=R0+(g-1)*w, r1=R0+g*w;
+    var sw = tot>=128?0.15:(tot>=64?0.3:(tot>=32?0.6:1.2));
+    for(var i=0;i<tot;i++){
+      var n=root*tot+i, a0=Math.PI-i*step, a1=a0-step, p=P[n];
+      var d="M"+pt(r0,a0)+" L"+pt(r1,a0)+" A"+r1.toFixed(1)+","+r1.toFixed(1)+" 0 0 1 "+pt(r1,a1)+" L"+pt(r0,a1)+" A"+r0.toFixed(1)+","+r0.toFixed(1)+" 0 0 0 "+pt(r0,a0)+" Z";
+      h+='<path d="'+d+'" class="f-'+(p?p.s:"unk")+'" style="stroke-width:'+sw+'" data-n="'+n+'"'+(p?' tabindex="0" role="button" aria-label="'+esc(p.n+", "+rel(n))+'"':'')+'></path>';
+      if(p && g<=2 && w>=30 || p && g===1){
+        var parts=p.n.split(" "), lab=(g===1?parts[0]:parts[parts.length-1]), am=(a0+a1)/2, rm=(r0+r1)/2;
+        if(g===1 || lab.length*4.6 < rm*step) h+='<text x="'+(CX+rm*Math.cos(am)).toFixed(1)+'" y="'+(CY-rm*Math.sin(am)).toFixed(1)+'"'+(w<30?' style="font-size:6.5px"':(g===2?' style="font-size:7px"':''))+'>'+esc(lab)+'</text>';
+      }
+    }
+  }
+  h+='<path d="M'+(CX-R0)+','+CY+' A'+R0+','+R0+' 0 0 1 '+(CX+R0)+','+CY+' Z" class="f-'+P[root].s+'" data-n="'+root+'" tabindex="0" role="button" aria-label="'+esc(P[root].n)+'"></path>';
+  h+='<text x="'+CX+'" y="'+(CY-8)+'" style="font-size:'+(P[root].n.split(" ")[0].length>6?6:8)+'px">'+esc(P[root].n.split(" ")[0])+'</text>';
+  svg.innerHTML=h;
+  document.getElementById("fancap").textContent = root===1
+    ? "Alle otte led fra Jan. Fars side ligger til venstre, mors side til højre, og hver ring er én generation længere tilbage."
+    : "Aner til "+P[root].n+" ("+rel(root)+"), "+rings+" led ud. Faderens side ligger til venstre.";
+}
+function show(n){
+  sel=n;
+  var p=P[n], el=document.getElementById("readout");
+  var prev=document.querySelector("#fan .sel"); if(prev) prev.classList.remove("sel");
+  var cur=document.querySelector('#fan [data-n="'+n+'"]'); if(cur) cur.classList.add("sel");
+  var btn="";
+  if(p && n!==root && gen(n)<8 && hasAnc(n)) btn+='<button type="button" id="zoomin">Vis kun denne gren</button>';
+  if(root!==1) btn+='<button type="button" id="zoomout">Tilbage til Jan</button>';
+  if(p){
+    el.innerHTML='<span class="rel">Nr. '+n+' · '+esc(rel(n))+'</span><span class="nm">'+esc(p.n)+'</span><span class="facts">'+esc(p.f)+(n>1?' <span class="chip">'+SRC[p.s]+'</span>':'')+'</span>'+(btn?'<span class="btns">'+btn+'</span>':'');
+  }else{
+    var child=Math.floor(n/2), c=P[child];
+    el.innerHTML='<span class="rel">Nr. '+n+' · '+esc(rel(n))+'</span><span class="nm">Ikke fundet endnu</span><span class="facts">'+(n%2?'Mor':'Far')+' til '+(c?esc(c.n):'en ane, som heller ikke er fundet')+'.</span>'+(btn?'<span class="btns">'+btn+'</span>':'');
+  }
+}
+(function(){
+  var svg=document.getElementById("fan");
+  svg.addEventListener("click",function(e){var n=e.target.getAttribute&&e.target.getAttribute("data-n"); if(n) show(+n);});
+  svg.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){var n=e.target.getAttribute("data-n"); if(n){e.preventDefault();show(+n);}}});
+  document.getElementById("readout").addEventListener("click",function(e){
+    if(e.target.id==="zoomin"){ root=sel; draw(); show(root); }
+    if(e.target.id==="zoomout"){ var back=root; root=1; draw(); show(back); }
+  });
+  draw(); show(1);
+})();
+
+// Generation lists
+(function(){
+  var h="";
+  for(var g=1;g<=8;g++){
+    var tot=Math.pow(2,g), k=0, rows="", gapStart=null;
+    function flush(end){
+      if(gapStart===null) return;
+      if(g>=6){ gapStart=null; return; }
+      var a=gapStart, b=end, child=Math.floor(a/2), c=P[child];
+      // describe the gap by its nearest known descendant
+      var d=a; while(d>1 && !P[d]) d=Math.floor(d/2);
+      var who = (b-a<=1 && c) ? (b>a?'Forældre til ':(a%2?'Mor til ':'Far til '))+esc(c.n) : 'Aner til '+esc(P[d].n);
+      rows+='<div class="card unk"><span class="k">'+a+(b>a?'–'+b:'')+'</span><span><span class="nm">Ikke fundet endnu</span></span><span class="facts">'+who+'</span></div>';
+      gapStart=null;
+    }
+    for(var n=tot;n<2*tot;n++){
+      var p=P[n];
+      if(!p){
+        // group unknowns that share the same nearest known descendant
+        var d=n; while(!P[d]) d=Math.floor(d/2);
+        if(gapStart!==null){ var d0=gapStart; while(!P[d0]) d0=Math.floor(d0/2); if(d0!==d) flush(n-1); }
+        if(gapStart===null) gapStart=n;
+        continue;
+      }
+      flush(n-1); k++;
+      rows+='<div class="card '+p.s+'"><span class="k">'+n+'</span><span><span class="nm">'+esc(p.n)+'</span> <span class="rel">'+esc(rel(n))+'</span><span class="chip">'+SRC[p.s]+'</span></span><span class="facts">'+esc(p.f)+'</span>'+(p.x?'<span class="note">'+esc(p.x)+'</span>':'')+'</div>';
+    }
+    flush(2*tot-1);
+    if(g>=6) rows+='<div class="card unk"><span class="k">–</span><span><span class="nm">'+(tot-k)+' aner i dette led er ikke fundet</span></span><span class="facts">'+(g===6?'De fundne hører til Lundsgaard-, Brzozowski- og Lauritzen-grenene.':'Alle fundne i dette led hører til Lundsgaard-grenen fra Vorde-egnen.')+'</span></div>';
+    h+='<div class="gen"><h3>'+GEN[g]+'<small>'+k+' af '+tot+' fundet</small></h3>'+rows+'</div>';
+  }
+  document.getElementById("gens").innerHTML=h;
+})();
+</script>
+</body>
+</html>
