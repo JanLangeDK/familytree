@@ -62,6 +62,8 @@ section{display:flex;flex-direction:column;gap:14px}
 .readout .facts{font-size:.9rem;color:var(--muted)}
 .readout .btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
 [hidden]{display:none!important}
+.tip{position:fixed;z-index:20;pointer-events:none;background:var(--ink);color:var(--bg);font-size:.8rem;line-height:1.3;padding:5px 9px;border-radius:6px;max-width:240px;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.tip small{display:block;opacity:.75;font-size:.72rem}
 .crumbs{display:flex;flex-wrap:wrap;align-items:center;gap:4px 2px;font-size:.85rem;min-height:30px}
 .crumbs button{font:inherit;color:var(--accent);background:transparent;border:0;border-radius:6px;padding:4px 6px;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 .crumbs button[aria-current]{color:var(--ink);font-weight:600;text-decoration:none;cursor:default}
@@ -423,7 +425,20 @@ function fromHash(){
     if(n===root){ if(root!==1) focus(Math.floor(root/2)); return; }
     if(P[n]) focus(n); else readout(n);
   }
-  svg.addEventListener("click",function(e){ pick(e.target); });
+  var tip=document.createElement("div"); tip.className="tip"; tip.hidden=true; tip.setAttribute("aria-hidden","true"); document.body.appendChild(tip);
+  svg.addEventListener("mousemove",function(e){
+    var n=e.target.getAttribute && e.target.getAttribute("data-n");
+    if(!n){ tip.hidden=true; return; }
+    n=+n; var p=P[n];
+    tip.innerHTML = p ? esc(p.n)+'<small>'+esc(rel(n))+'</small>' : 'Ikke fundet endnu<small>'+esc(rel(n))+'</small>';
+    tip.hidden=false;
+    var w=tip.offsetWidth, h=tip.offsetHeight, x=e.clientX+14, y=e.clientY+16;
+    if(x+w>window.innerWidth-6) x=e.clientX-w-10;
+    if(y+h>window.innerHeight-6) y=e.clientY-h-10;
+    tip.style.left=Math.max(6,x)+"px"; tip.style.top=Math.max(6,y)+"px";
+  });
+  svg.addEventListener("mouseleave",function(){ tip.hidden=true; });
+  svg.addEventListener("click",function(e){ tip.hidden=true; pick(e.target); });
   svg.addEventListener("keydown",function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); pick(e.target); } });
   document.getElementById("crumbs").addEventListener("click",function(e){ var n=e.target.getAttribute("data-n"); if(n && +n!==root) focus(+n); });
   window.addEventListener("hashchange",fromHash);
