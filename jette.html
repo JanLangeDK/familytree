@@ -362,6 +362,8 @@ function filter(){
   [].slice.call(document.querySelectorAll('section[aria-labelledby="h-open"] li')).forEach(function(e){
     e.hidden = !(root===1 || !e.hasAttribute("data-n") || hits(e,root));
   });
+  var cs=document.querySelector('section[aria-labelledby="h-corr"]');
+  if(cs){ var cany=false; [].slice.call(cs.querySelectorAll("li")).forEach(function(e){ var on=root===1 || !e.hasAttribute("data-n") || hits(e,root); e.hidden=!on; if(on) cany=true; }); cs.hidden=!cany; }
   document.getElementById("h-list").textContent=(root===1?"Anerne generation for generation":"Anerne i grenen"+who);
   gens();
 }

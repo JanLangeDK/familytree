@@ -321,6 +321,14 @@ footer{font-size:.8rem;color:var(--muted)}
   </ul>
 </section>
 
+<section aria-labelledby="h-corr">
+  <h2 id="h-corr">Forespørgsler og svar</h2>
+  <p class="lede">Henvendelser til arkiver og foreninger, så de næste i familien kan se, hvem der er spurgt, hvad der blev svaret, og hvor sporet kan tages op igen. De originale mails gemmes hos Jan.</p>
+  <ul class="plain">
+    <li data-n="8,16,17"><b>November 2026: GeAGNO, Tyskland.</b> Genealogische Arbeitsgemeinschaft Neidenburg und Ortelsburg er en tysk forening af slægtsforskere for de tidligere kredse Neidenburg og Ortelsburg i det sydlige Østpreussen, i dag Polen. <i>Spurgt 21. november:</i> om Max Leopold Langes dåb i Skurpien i 1862 står i foreningens indeks over dåb i Soldau landsogn 1801–1884, om forældrene Johann Lange og Anna Elff findes i foreningens andre registre, og hvordan hæftet bestilles. <i>Svar samme dag:</i> Johann Lange var skolelærer i Skurpien i 1859 og fik mødeordre til militæret til 4. juli og 8. september 1859 (Neidenburger Zeitung 18. juni og 27. august 1859). Intet om Elff i avisen eller i Quassowski-kartoteket. Kartoteket har en Gustav Lange, lærer i Neidenburg i 1862 (efter Gregorovius s. 223), som måske er slægt. <i>Status:</i> sendt videre til foreningens andre forskere. Svaret om Soldau-indekset og hæftet afventes.</li>
+  </ul>
+</section>
+
 <section aria-labelledby="h-src">
   <h2 id="h-src">Kilder</h2>
   <ul class="plain src">
@@ -563,6 +571,8 @@ function filter(){
   [].slice.call(document.querySelectorAll('section[aria-labelledby="h-open"] li')).forEach(function(e){
     e.hidden = !(root===1 || !e.hasAttribute("data-n") || hits(e,root));
   });
+  var cs=document.querySelector('section[aria-labelledby="h-corr"]');
+  if(cs){ var cany=false; [].slice.call(cs.querySelectorAll("li")).forEach(function(e){ var on=root===1 || !e.hasAttribute("data-n") || hits(e,root); e.hidden=!on; if(on) cany=true; }); cs.hidden=!cany; }
   document.getElementById("h-list").textContent=(root===1?"Anerne generation for generation":"Anerne i grenen"+who);
   gens();
 }
